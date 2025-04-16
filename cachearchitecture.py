@@ -4,7 +4,7 @@ def cacheArchitecture():
     nominalSize = input("Please Input the Nominal Size of your Cache (Ex. 128 KB): ")
     wordsPerBlock = int(float(input("Please Input the Words per Block in your Cache (Powers of 2): ")))
     
-    blocks = numOfBlocks(nominalSize, wordsPerBlock)
+    nomSize, blocks = numOfBlocks(nominalSize, wordsPerBlock)
     if (blocks is not None):
         blocksExponent = int(math.log2(blocks))
         if (blocksExponent > 9):
@@ -17,7 +17,8 @@ def cacheArchitecture():
     mappingPolicy = input("Please Select your Cache's Mapping Policy (Direct Mapping or Set Associative): ")
     match mappingPolicy.strip().upper():
         case "DIRECT MAPPING":
-            return 0
+            print("Direct Mapping Does Not Use Sets.")
+            sets = 1
         case "SET ASSOCIATIVE":
             blocksPerSet = input("Please Input the Blocks per Set that Matches your Associativity (Powers of 2: Direct Mapping = 1, 2-Way = 2, Etc.): ")
             sets = numOfSets(blocks, blocksPerSet)
@@ -34,7 +35,30 @@ def cacheArchitecture():
 
     offset, index, tag = partitioning(wordsPerBlock, blocks, sets)
     print(f"The Addressing Within the Cache is as Follows: \n\tOffset: {offset}\n\tIndex: {index}\n\tTag: {tag}")
-    
+
+    size = realSize(nomSize, blocks, tag)
+    powerOfRealSize = math.log2(size)
+    if (powerOfRealSize < 10):
+        print(f"The Real Size of the Cache is: {size} B")
+    elif (powerOfRealSize >= 10):
+        baseOutput = powerOfRealSize % 10
+        baseTransformation = powerOfRealSize - baseOutput
+
+        match baseTransformation:
+            case 10:
+                print(f"The Real Size of the Cache is: {(2 ** baseOutput) // 1} KB")
+            case 20:
+                print(f"The Real Size of the Cache is: {(2 ** baseOutput) // 1} MB")
+            case 30:
+                print(f"The Real Size of the Cache is: {(2 ** baseOutput) // 1} GB")
+            case 40:
+                print(f"The Real Size of the Cache is: {(2 ** baseOutput) // 1} TB")
+            case 50:
+                print(f"The Real Size of the Cache is: {(2 ** baseOutput) // 1} PB")
+            case _:
+                print(f"If The Cache is More Than a Petabyte, You Are Going to Have a Bad Time!")
+
+
 
 def numOfBlocks(nominalSize, wordsPerBlock):
     nomSizeParts = nominalSize.strip().split()
@@ -65,14 +89,19 @@ def numOfBlocks(nominalSize, wordsPerBlock):
     
     bytesPerBlock = wordsPerBlock * 4
     powerOfNomSize = math.log2(nomSizeNum) + math.log2(byting)
-    blocks = (2 ** powerOfNomSize) / bytesPerBlock
+    nomSize = (2 ** powerOfNomSize)
+    blocks = nomSize / bytesPerBlock
 
-    return blocks
+    return nomSize, blocks
+
+
 
 def numOfSets(blocks, associativity):
     associativity = int(associativity)
     sets = blocks // associativity
     return sets
+
+
 
 def partitioning(wordsPerBlock, blocks, sets):
     bytesPerBlock = wordsPerBlock * 4
@@ -87,7 +116,14 @@ def partitioning(wordsPerBlock, blocks, sets):
     
     return offset, index, tag
 
-def realSize():
-    return 0
+
+
+def realSize(nomSize, blocks, tag):
+    multiplier = (tag + 1) / 8
+    increase = blocks * multiplier
+    size = nomSize + increase
+    return size
+
+
 
 cacheArchitecture()
