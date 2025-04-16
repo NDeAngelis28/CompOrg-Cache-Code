@@ -70,7 +70,8 @@ def numOfBlocks(nominalSize, wordsPerBlock):
     return blocks
 
 def numOfSets(blocks, associativity):
-    sets = blocks / associativity
+    associativity = int(associativity)
+    sets = blocks // associativity
     return sets
 
 def partitioning(wordsPerBlock, blocks, sets):
