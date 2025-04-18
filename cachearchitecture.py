@@ -1,5 +1,6 @@
 import math
 
+
 def cacheArchitecture():
     nominalSize = input("Please Input the Nominal Size of your Cache (Ex. 128 KB): ")
     wordsPerBlock = int(float(input("Please Input the Words per Block in your Cache (Powers of 2): ")))
@@ -58,7 +59,7 @@ def cacheArchitecture():
             case _:
                 print(f"If The Cache is More Than a Petabyte, You Are Going to Have a Bad Time!")
 
-
+    simulate_access(wordsPerBlock, blocks, sets, mappingPolicy, tag)
 
 def numOfBlocks(nominalSize, wordsPerBlock):
     nomSizeParts = nominalSize.strip().split()
@@ -124,6 +125,67 @@ def realSize(nomSize, blocks, tag):
     size = nomSize + increase
     return size
 
+cache = {}
+access_table = []
+
+def clear_cache():
+    global cache, access_table
+    cache.clear()
+    access_table.clear()
+    print("Cache and access history cleared.")
+
+
+def simulate_access(wordsPerBlock, blocks, sets, mappingPolicy, tag_bits):
+    while True:
+        user_input = input("\nEnter a word address (or type 'clear' to reset cache, 'exit' to quit): ").strip()
+
+        if user_input.lower() == 'exit':
+            break
+        elif user_input.lower() == 'clear':
+            clear_cache()
+            continue
+
+        try:
+            word_address = int(user_input)
+        except ValueError:
+            print("Invalid Input Format: Please Try Again!")
+            continue
+
+        bytesPerBlock = wordsPerBlock * 4
+        offset = math.log2(bytesPerBlock)
+        block_number = word_address // wordsPerBlock
+
+        if mappingPolicy.upper() == "DIRECT MAPPING":
+            index = block_number % int(blocks)
+            tag = block_number // int(blocks)
+            cache_key = index
+        else:
+            set_index = block_number % int(sets)
+            tag = block_number // int(sets)
+            if tag >= 2 ** int(tag_bits):
+                print(f"Error: Tag {tag} exceeds {int(tag_bits)}-bit max ({2 ** int(tag_bits) - 1}).")
+                continue
+            cache_key = (set_index, tag)
+
+        is_hit = cache.get(cache_key) == tag
+        if not is_hit:
+            cache[cache_key] = tag
+
+        access_table.append({
+            "Address": word_address,
+            "Index/Set": cache_key,
+            "Tag": tag,
+            "Hit": is_hit,
+        })
+
+
+        print(f"Accessing Address: {word_address}")
+        print(f"Lacated in Cache at: {cache_key}")
+        print(f"{'HIT' if is_hit else 'MISS'}")
+
+        print("\nAccess Table:")
+        for entry in access_table:
+            print(entry)
 
 
 cacheArchitecture()
