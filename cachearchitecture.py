@@ -127,9 +127,6 @@ def realSize(nomSize, blocks, tag):
 
 
 
-
-import math
-
 cache = {}
 access_table = []
 
