@@ -261,15 +261,21 @@ def manual_access(wordsPerBlock, blocks, sets, mappingPolicy):
 
 
 def simulate_mode(wordsPerBlock, blocks, sets, mappingPolicy, num_accesses, max_word_address):
-    clear_cache()  # Reset cache before simulation
+    clear_cache()
     print(f"\n--- Starting Simulation Mode ---")
-    print(f"Generating {num_accesses} accesses (max word address: {max_word_address})...\n")
+    print(f"Generating {num_accesses} accesses (max word address: {max_word_address})...")
+
+    locality_enabled = input("Enable temporal/spatial locality? ").strip().lower() == "yes"
 
     hit_count = 0
     miss_count = 0
+    access_table.clear()
+
+    # Start with a random word address
+    current_address = random.randint(0, max_word_address)
 
     for _ in range(num_accesses):
-        word_address = random.randint(0, max_word_address)
+        word_address = current_address
 
         block_number = word_address // wordsPerBlock
 
@@ -279,6 +285,13 @@ def simulate_mode(wordsPerBlock, blocks, sets, mappingPolicy, num_accesses, max_
             is_hit = cache.get(cache_key) == block_number
             if not is_hit:
                 cache[cache_key] = block_number
+            access_info = {
+                "Word": word_address,
+                "Set/Index": index,
+                "Block": block_number,
+                "Hit": is_hit,
+            }
+
         else:
             ways = int(blocks) // int(sets)
             set_index = block_number % int(sets)
@@ -297,17 +310,31 @@ def simulate_mode(wordsPerBlock, blocks, sets, mappingPolicy, num_accesses, max_
                 way_to_fill = empty_way if empty_way is not None else 0
                 cache[(set_index, way_to_fill)] = block_number
 
-        access_table.append({
-            "Word": word_address,
-            "Set/Index": set_index if mappingPolicy.upper() != "DIRECT MAPPING" else index,
-            "Block": block_number,
-            "Hit": is_hit,
-        })
+            access_info = {
+                "Word": word_address,
+                "Set/Index": set_index,
+                "Block": block_number,
+                "Hit": is_hit,
+            }
+
+        access_table.append(access_info)
 
         if is_hit:
             hit_count += 1
         else:
             miss_count += 1
+
+        # Decide next address
+        if locality_enabled:
+            # 85% chance to stay local, 15% to jump
+            if random.random() < 0.85:
+                # Bias toward next address being within ±4 of the current
+                delta = random.choice([-3, -2, -1, 0, 1, 2, 3])
+                current_address = max(0, min(max_word_address, current_address + delta))
+            else:
+                current_address = random.randint(0, max_word_address)
+        else:
+            current_address = random.randint(0, max_word_address)
 
     total = hit_count + miss_count
     hit_rate = (hit_count / total) * 100
@@ -322,8 +349,7 @@ def simulate_mode(wordsPerBlock, blocks, sets, mappingPolicy, num_accesses, max_
     print(f"Hit Rate: {hit_rate:.2f}%")
     print(f"Miss Rate: {miss_rate:.2f}%")
 
-    # Ask user if they want to see detailed access logs
-    show_accesses = input("Would you like to print the full access list? ")
+    show_accesses = input("Would you like to print the full access list? ").strip().lower()
     if show_accesses:
         print("\n--- Access List ---")
         print(f"{'#':<4} {'Word':<8} {'Set/Index':<12} {'Block':<8} {'Range':<15} {'Result':<6}")
@@ -335,6 +361,7 @@ def simulate_mode(wordsPerBlock, blocks, sets, mappingPolicy, num_accesses, max_
             w_end = w_start + wordsPerBlock - 1
             result = "HIT" if entry['Hit'] else "MISS"
             print(f"{i:<4} {entry['Word']:<8} {loc:<12} b{block:<7} w{w_start}-{w_end:<7} {result:<6}")
+
 
 
 
