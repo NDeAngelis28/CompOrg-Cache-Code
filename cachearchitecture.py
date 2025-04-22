@@ -1,4 +1,5 @@
 import math
+import random
 
 
 def cacheArchitecture():
@@ -59,7 +60,17 @@ def cacheArchitecture():
             case _:
                 print(f"If The Cache is More Than a Petabyte, You Are Going to Have a Bad Time!")
 
-    simulate_access(wordsPerBlock, blocks, sets, mappingPolicy)
+    manual_access(wordsPerBlock, blocks, sets, mappingPolicy)
+
+    if input("\nWould you like to run the automatic simulation mode? ") == "yes":
+        numAccesses = int(input("How many accesses would you like to simulate? "))
+        maxWords = int(input("What is the maximum address you would like to allow? "))
+
+        simulate_mode(wordsPerBlock, blocks, sets, mappingPolicy, numAccesses, maxWords)
+    else:
+        print("Goodbye!")
+
+
 
 def numOfBlocks(nominalSize, wordsPerBlock):
     nomSizeParts = nominalSize.strip().split()
@@ -175,7 +186,7 @@ def print_cache_table(mappingPolicy, blocks, sets, wordsPerBlock):
             print(row)
 
 # Simulates user access to cache and performs hit/miss logic
-def simulate_access(wordsPerBlock, blocks, sets, mappingPolicy):
+def manual_access(wordsPerBlock, blocks, sets, mappingPolicy):
     while True:
         user_input = input("\nEnter a word address (or type 'clear' to reset cache, 'exit' to quit): ").strip()
 
@@ -247,6 +258,84 @@ def simulate_access(wordsPerBlock, blocks, sets, mappingPolicy):
 
         # Display current cache content
         print_cache_table(mappingPolicy, blocks, sets, wordsPerBlock)
+
+
+def simulate_mode(wordsPerBlock, blocks, sets, mappingPolicy, num_accesses, max_word_address):
+    clear_cache()  # Reset cache before simulation
+    print(f"\n--- Starting Simulation Mode ---")
+    print(f"Generating {num_accesses} accesses (max word address: {max_word_address})...\n")
+
+    hit_count = 0
+    miss_count = 0
+
+    for _ in range(num_accesses):
+        word_address = random.randint(0, max_word_address)
+
+        block_number = word_address // wordsPerBlock
+
+        if mappingPolicy.upper() == "DIRECT MAPPING":
+            index = block_number % int(blocks)
+            cache_key = index
+            is_hit = cache.get(cache_key) == block_number
+            if not is_hit:
+                cache[cache_key] = block_number
+        else:
+            ways = int(blocks) // int(sets)
+            set_index = block_number % int(sets)
+            is_hit = False
+            empty_way = None
+
+            for way in range(ways):
+                key = (set_index, way)
+                if cache.get(key) == block_number:
+                    is_hit = True
+                    break
+                if cache.get(key) is None and empty_way is None:
+                    empty_way = way
+
+            if not is_hit:
+                way_to_fill = empty_way if empty_way is not None else 0
+                cache[(set_index, way_to_fill)] = block_number
+
+        access_table.append({
+            "Word": word_address,
+            "Set/Index": set_index if mappingPolicy.upper() != "DIRECT MAPPING" else index,
+            "Block": block_number,
+            "Hit": is_hit,
+        })
+
+        if is_hit:
+            hit_count += 1
+        else:
+            miss_count += 1
+
+    total = hit_count + miss_count
+    hit_rate = (hit_count / total) * 100
+    miss_rate = (miss_count / total) * 100
+
+    print_cache_table(mappingPolicy, blocks, sets, wordsPerBlock)
+
+    print("\n--- Simulation Results ---")
+    print(f"Total Accesses: {total}")
+    print(f"Hits: {hit_count}")
+    print(f"Misses: {miss_count}")
+    print(f"Hit Rate: {hit_rate:.2f}%")
+    print(f"Miss Rate: {miss_rate:.2f}%")
+
+    # Ask user if they want to see detailed access logs
+    show_accesses = input("Would you like to print the full access list? ")
+    if show_accesses:
+        print("\n--- Access List ---")
+        print(f"{'#':<4} {'Word':<8} {'Set/Index':<12} {'Block':<8} {'Range':<15} {'Result':<6}")
+        print("-" * 65)
+        for i, entry in enumerate(access_table, start=1):
+            loc = f"Set {entry['Set/Index']}" if mappingPolicy.upper() != "DIRECT MAPPING" else f"Index {entry['Set/Index']}"
+            block = entry['Block']
+            w_start = block * wordsPerBlock
+            w_end = w_start + wordsPerBlock - 1
+            result = "HIT" if entry['Hit'] else "MISS"
+            print(f"{i:<4} {entry['Word']:<8} {loc:<12} b{block:<7} w{w_start}-{w_end:<7} {result:<6}")
+
 
 
 
