@@ -137,6 +137,7 @@ def clear_cache():
     print("Cache and access history cleared.")
 
 def print_cache_table(mappingPolicy, blocks, sets, wordsPerBlock):
+    # this is just a crazy printing function
     if mappingPolicy.upper() == "DIRECT MAPPING":
         print("\nCache Content (Direct Mapped):")
         print(f"{'Index':<6} | {'Block Info':<18}")
@@ -170,6 +171,7 @@ def print_cache_table(mappingPolicy, blocks, sets, wordsPerBlock):
             print(row)
 
 def simulate_access(wordsPerBlock, blocks, sets, mappingPolicy):
+    # to find positioning given word address, blocks, sets and mapping policy
     while True:
         user_input = input("\nEnter a word address (or type 'clear' to reset cache, 'exit' to quit): ").strip()
 
