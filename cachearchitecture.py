@@ -2,10 +2,13 @@ import math
 import random
 
 
+# MAIN FUNCTION - Facilitate operation of the cache architecture simulation
 def cacheArchitecture():
+    # Initial Inputs
     nominalSize = input("Please Input the Nominal Size of your Cache (Ex. 128 KB): ")
     wordsPerBlock = int(float(input("Please Input the Words per Block in your Cache (Powers of 2): ")))
-    
+
+    #Calculate Block Count
     nomSize, blocks = numOfBlocks(nominalSize, wordsPerBlock)
     if (blocks is not None):
         blocksExponent = int(math.log2(blocks))
@@ -16,6 +19,7 @@ def cacheArchitecture():
     else:
         print("Failed!")
 
+    # Mapping Policy Stuff, find amount of sets
     mappingPolicy = input("Please Select your Cache's Mapping Policy (Direct Mapping or Set Associative): ")
     match mappingPolicy.strip().upper():
         case "DIRECT MAPPING":
@@ -35,9 +39,11 @@ def cacheArchitecture():
         case _:
             print("Invalid Input Format: Please Select One of the Declared Option! Please Try Again Later!")
 
+    # Get sizes of each component and display
     offset, index, tag = partitioning(wordsPerBlock, blocks, sets)
     print(f"The Addressing Within the Cache is as Follows: \n\tOffset: {offset}\n\tIndex: {index}\n\tTag: {tag}")
 
+    # Calculate real size of cache based on previous information
     size = realSize(nomSize, blocks, tag)
     powerOfRealSize = math.log2(size)
     if (powerOfRealSize < 10):
@@ -46,6 +52,7 @@ def cacheArchitecture():
         baseOutput = powerOfRealSize % 10
         baseTransformation = powerOfRealSize - baseOutput
 
+        # Add the unit to the size based on power
         match baseTransformation:
             case 10:
                 print(f"The Real Size of the Cache is: {(2 ** baseOutput) // 1} KB")
@@ -60,8 +67,11 @@ def cacheArchitecture():
             case _:
                 print(f"If The Cache is More Than a Petabyte, You Are Going to Have a Bad Time!")
 
+
+    # Call the functiton to facilitate manual accessing
     manual_access(wordsPerBlock, blocks, sets, mappingPolicy)
 
+    # Set up the simulation mode
     if input("\nWould you like to run the automatic simulation mode? ") == "yes":
         numAccesses = int(input("How many accesses would you like to simulate? "))
         maxWords = int(input("What is the maximum address you would like to allow? "))
@@ -71,10 +81,11 @@ def cacheArchitecture():
         print("Goodbye!")
 
 
-
+# Calculate Number of blocks
 def numOfBlocks(nominalSize, wordsPerBlock):
     nomSizeParts = nominalSize.strip().split()
-    
+
+    # Formatting Stuff
     if len(nomSizeParts) == 2:
         nomSizeNum = int(float(nomSizeParts[0]))
         nomSizeByting = nomSizeParts[1].upper()
@@ -83,7 +94,8 @@ def numOfBlocks(nominalSize, wordsPerBlock):
         nomSizeNum = None
         nomSizeByting = None
         return None
-    
+
+    # Convert Units to exponent stuff
     match nomSizeByting:
         case "B":
             byting = 2 ** 0
@@ -98,7 +110,8 @@ def numOfBlocks(nominalSize, wordsPerBlock):
         case _:
             print("Invalid Input: The Program Does Not Calculate Nominal Sizes that High! Please Try Again Later!")
             return None
-    
+
+    # Do the calculations
     bytesPerBlock = wordsPerBlock * 4
     powerOfNomSize = math.log2(nomSizeNum) + math.log2(byting)
     nomSize = (2 ** powerOfNomSize)
@@ -107,14 +120,14 @@ def numOfBlocks(nominalSize, wordsPerBlock):
     return nomSize, blocks
 
 
-
+# Calculate Number of Sets
 def numOfSets(blocks, associativity):
     associativity = int(associativity)
     sets = blocks // associativity
     return sets
 
 
-
+# Calculate bit lengths of every component of 32 bit
 def partitioning(wordsPerBlock, blocks, sets):
     bytesPerBlock = wordsPerBlock * 4
     offset = math.log2(bytesPerBlock)
@@ -129,7 +142,7 @@ def partitioning(wordsPerBlock, blocks, sets):
     return offset, index, tag
 
 
-
+# Calculate Real Size using formula
 def realSize(nomSize, blocks, tag):
     multiplier = (tag + 1) / 8
     increase = blocks * multiplier
@@ -328,7 +341,7 @@ def simulate_mode(wordsPerBlock, blocks, sets, mappingPolicy, num_accesses, max_
         if locality_enabled:
             # 85% chance to stay local, 15% to jump
             if random.random() < 0.85:
-                # Bias toward next address being within ±4 of the current
+                # Bias toward next address being within +-4 of the current
                 delta = random.choice([-3, -2, -1, 0, 1, 2, 3])
                 current_address = max(0, min(max_word_address, current_address + delta))
             else:
@@ -367,5 +380,5 @@ def simulate_mode(wordsPerBlock, blocks, sets, mappingPolicy, num_accesses, max_
 
 
 
-
+# Call
 cacheArchitecture()
