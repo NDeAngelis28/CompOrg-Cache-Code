@@ -127,17 +127,19 @@ def realSize(nomSize, blocks, tag):
 
 
 
-cache = {}
-access_table = []
+# Cache simulation variables
+cache = {}              # Stores the cache blocks based on mapping policy
+access_table = []       # Keeps track of access history for reporting
 
+# Resets the cache and access history
 def clear_cache():
     global cache, access_table
     cache.clear()
     access_table.clear()
     print("Cache and access history cleared.")
 
+# Prints the current contents of the cache in a readable format
 def print_cache_table(mappingPolicy, blocks, sets, wordsPerBlock):
-    # this is just a crazy printing function
     if mappingPolicy.upper() == "DIRECT MAPPING":
         print("\nCache Content (Direct Mapped):")
         print(f"{'Index':<6} | {'Block Info':<18}")
@@ -145,6 +147,7 @@ def print_cache_table(mappingPolicy, blocks, sets, wordsPerBlock):
         for i in range(int(blocks)):
             block = cache.get(i)
             if block is not None:
+                # Calculate word range for each block
                 w_start = block * wordsPerBlock
                 w_end = w_start + wordsPerBlock - 1
                 value = f"b{block}(w{w_start}-{w_end})"
@@ -152,6 +155,7 @@ def print_cache_table(mappingPolicy, blocks, sets, wordsPerBlock):
                 value = "Empty"
             print(f"{i:<6} | {value:<18}")
     else:
+        # Set-associative formatting
         ways = int(blocks) // int(sets)
         print(f"\nCache Content ({ways}-way Set Associative):")
         header = "Set | " + " | ".join(f"{w}" for w in range(ways))
@@ -170,8 +174,8 @@ def print_cache_table(mappingPolicy, blocks, sets, wordsPerBlock):
                 row += f" {val:<18}|"
             print(row)
 
+# Simulates user access to cache and performs hit/miss logic
 def simulate_access(wordsPerBlock, blocks, sets, mappingPolicy):
-    # to find positioning given word address, blocks, sets and mapping policy
     while True:
         user_input = input("\nEnter a word address (or type 'clear' to reset cache, 'exit' to quit): ").strip()
 
@@ -187,20 +191,25 @@ def simulate_access(wordsPerBlock, blocks, sets, mappingPolicy):
             print("Invalid Input Format: Please Try Again!")
             continue
 
+        # Determine the block number the word belongs to
         block_number = word_address // wordsPerBlock
 
+        # DIRECT MAPPING policy
         if mappingPolicy.upper() == "DIRECT MAPPING":
             index = block_number % int(blocks)
             cache_key = index
             is_hit = cache.get(cache_key) == block_number
             if not is_hit:
-                cache[cache_key] = block_number
+                cache[cache_key] = block_number  # Replace block in case of miss
+
+        # SET ASSOCIATIVE policy
         else:
             ways = int(blocks) // int(sets)
             set_index = block_number % int(sets)
             is_hit = False
             empty_way = None
 
+            # Search all ways for a hit or an empty slot
             for way in range(ways):
                 key = (set_index, way)
                 if cache.get(key) == block_number:
@@ -209,10 +218,12 @@ def simulate_access(wordsPerBlock, blocks, sets, mappingPolicy):
                 if cache.get(key) is None and empty_way is None:
                     empty_way = way
 
+            # If miss, place in empty slot or replace way 0 (no LRU used)
             if not is_hit:
                 way_to_fill = empty_way if empty_way is not None else 0
                 cache[(set_index, way_to_fill)] = block_number
 
+        # Record access
         access_table.append({
             "Word": word_address,
             "Set/Index": set_index if mappingPolicy.upper() != "DIRECT MAPPING" else index,
@@ -220,11 +231,13 @@ def simulate_access(wordsPerBlock, blocks, sets, mappingPolicy):
             "Hit": is_hit,
         })
 
+        # Report results of access
         print(f"\nAccessing Address: {word_address}")
         print(f"Located in Cache at: {'Set ' + str(set_index) if mappingPolicy.upper() != 'DIRECT MAPPING' else 'Index ' + str(index)}")
         print(f"{'HIT' if is_hit else 'MISS'}")
 
-        print("\nAccess Table:")
+        # Display full access history
+        print("\nAccesses:")
         for entry in access_table:
             loc = f"Set {entry['Set/Index']}" if mappingPolicy.upper() != "DIRECT MAPPING" else f"Index {entry['Set/Index']}"
             block = entry['Block']
@@ -232,7 +245,9 @@ def simulate_access(wordsPerBlock, blocks, sets, mappingPolicy):
             w_end = w_start + wordsPerBlock - 1
             print(f"Word {entry['Word']}: {loc}, b{block}(w{w_start},{w_end}) -> {'HIT' if entry['Hit'] else 'MISS'}")
 
+        # Display current cache content
         print_cache_table(mappingPolicy, blocks, sets, wordsPerBlock)
+
 
 
 
