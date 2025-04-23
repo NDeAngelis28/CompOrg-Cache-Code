@@ -4,6 +4,7 @@ import random
 
 # MAIN FUNCTION - Facilitate operation of the cache architecture simulation
 def cacheArchitecture():
+    global lru_enabled
     # Initial Inputs
     nominalSize = input("Please Input the Nominal Size of your Cache (Ex. 128 KB): ")
     wordsPerBlock = int(float(input("Please Input the Words per Block in your Cache (Powers of 2): ")))
@@ -34,6 +35,8 @@ def cacheArchitecture():
                     print(f"Set Count: 2^{setsExponent} Sets")
                 else:
                     print(f"Set Count: {sets} Sets")
+                lru_enabled_input = input("Would you like to enable Least Recently Used (LRU) replacement policy? (yes/no): ").strip().lower()
+                lru_enabled = lru_enabled_input == 'yes'
             else:
                 print("Failed!")
         case _:
@@ -212,6 +215,7 @@ def choose_victim(set_idx):
 
 # Simulates user access to cache and performs hit/miss logic
 def manual_access(wordsPerBlock, blocks, sets, mappingPolicy):
+    clear_cache()
     while True:
         user_input = input("\nEnter a word address (or type 'clear' to reset cache, 'exit' to quit): ").strip()
 
@@ -257,12 +261,20 @@ def manual_access(wordsPerBlock, blocks, sets, mappingPolicy):
 
             # If miss, place in empty slot or replace way 0 (no LRU used)
             if not is_hit:
+                empty_way = next((w for w in range(ways) if cache.get((set_index,w)) is None), None)
+
                 if empty_way is not None:
                     target_way = empty_way
                 else:
-                    victim = choose_victim(set_index)
-                    target_way = next(w for w in range(ways)
-                                      if cache.get((set_index, w)) == victim)
+                    if lru_enabled:
+                        victim = choose_victim(set_index)
+                    else:
+                        victim = cache.get((set_index,ways-1))
+                    for w in range(ways):
+                        if cache.get((set_index, w)) == victim:
+                            del cache[(set_index, w)]
+                            target_way = w
+                            break
                 cache[(set_index, target_way)] = block_number
                 record_use(set_index,block_number)
 
@@ -341,14 +353,22 @@ def simulate_mode(wordsPerBlock, blocks, sets, mappingPolicy, num_accesses, max_
                     empty_way = way
 
             if not is_hit:
+                empty_way = next((w for w in range(ways) if cache.get((set_index,w)) is None), None)
+
                 if empty_way is not None:
                     target_way = empty_way
                 else:
-                    victim = choose_victim(set_index)
-                    target_way = next(w for w in range(ways)
-                                      if cache.get((set_index, w)) == victim)
+                    if lru_enabled:
+                        victim = choose_victim(set_index)
+                    else:
+                        victim = cache.get((set_index,ways-1))
+                    for w in range(ways):
+                        if cache.get((set_index, w)) == victim:
+                            del cache[(set_index, w)]
+                            target_way = w
+                            break
                 cache[(set_index, target_way)] = block_number
-                record_use(set_index, block_number)
+                record_use(set_index,block_number)
 
             access_info = {
                 "Word": word_address,
@@ -390,7 +410,7 @@ def simulate_mode(wordsPerBlock, blocks, sets, mappingPolicy, num_accesses, max_
     print(f"Miss Rate: {miss_rate:.2f}%")
 
     show_accesses = input("Would you like to print the full access list? ").strip().lower()
-    if show_accesses:
+    if show_accesses == "yes":
         print("\n--- Access List ---")
         print(f"{'#':<4} {'Word':<8} {'Set/Index':<12} {'Block':<8} {'Range':<15} {'Result':<6}")
         print("-" * 65)
@@ -401,8 +421,8 @@ def simulate_mode(wordsPerBlock, blocks, sets, mappingPolicy, num_accesses, max_
             w_end = w_start + wordsPerBlock - 1
             result = "HIT" if entry['Hit'] else "MISS"
             print(f"{i:<4} {entry['Word']:<8} {loc:<12} b{block:<7} w{w_start}-{w_end:<7} {result:<6}")
-
-
+    else:
+        print("Goodbye!")
 
 
 
