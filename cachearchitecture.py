@@ -305,31 +305,39 @@ def manual_access(wordsPerBlock, blocks, sets, mappingPolicy):
         print_cache_table(mappingPolicy, blocks, sets, wordsPerBlock)
 
 
+# Simulate a program accessing cache automatically
 def simulate_mode(wordsPerBlock, blocks, sets, mappingPolicy, num_accesses, max_word_address):
+    # Reset cache and access history for a fresh simulation
     clear_cache()
     print(f"\n--- Starting Simulation Mode ---")
     print(f"Generating {num_accesses} accesses (max word address: {max_word_address})...")
 
+    # Ask if they wanna simulate spatial/temporal locality
     locality_enabled = input("Enable temporal/spatial locality? ").strip().lower() == "yes"
 
     hit_count = 0
     miss_count = 0
-    access_table.clear()
+    access_table.clear()  # Clear previous access history
 
-    # Start with a random word address
+    # Start simulation with a randomly chosen initial address
     current_address = random.randint(0, max_word_address)
 
+    # Loop for the total number of accesses
     for _ in range(num_accesses):
         word_address = current_address
+        block_number = word_address // wordsPerBlock  # Calculate block number
 
-        block_number = word_address // wordsPerBlock
-
+        # --- Direct Mapped Cache Logic ---
         if mappingPolicy.upper() == "DIRECT MAPPING":
-            index = block_number % int(blocks)
+            index = block_number % int(blocks)  # Determine index in cache
             cache_key = index
-            is_hit = cache.get(cache_key) == block_number
+            is_hit = cache.get(cache_key) == block_number  # Hit if the block is already at this index
+
+            # On miss, update cache at this index
             if not is_hit:
                 cache[cache_key] = block_number
+
+            # Record this access
             access_info = {
                 "Word": word_address,
                 "Set/Index": index,
@@ -337,39 +345,48 @@ def simulate_mode(wordsPerBlock, blocks, sets, mappingPolicy, num_accesses, max_
                 "Hit": is_hit,
             }
 
+        # --- Set-Associative Cache Logic ---
         else:
-            ways = int(blocks) // int(sets)
-            set_index = block_number % int(sets)
+            ways = int(blocks) // int(sets)  # Number of blocks per set (associativity)
+            set_index = block_number % int(sets)  # Set index for this block
             is_hit = False
             empty_way = None
 
+            # Check if block is already in the set (hit)
             for way in range(ways):
                 key = (set_index, way)
                 if cache.get(key) == block_number:
                     is_hit = True
-                    record_use(set_index, block_number)
+                    record_use(set_index, block_number)  # Update LRU status if enabled
                     break
                 if cache.get(key) is None:
-                    empty_way = way
+                    empty_way = way  # Remember empty way for later use
 
+            # If miss: find where to place block (empty way or evict)
             if not is_hit:
+                # First try to find an empty way (again, in case missed above)
                 empty_way = next((w for w in range(ways) if cache.get((set_index,w)) is None), None)
 
                 if empty_way is not None:
                     target_way = empty_way
                 else:
+                    # Choose a block to evict (LRU if enabled, otherwise last way)
                     if lru_enabled:
                         victim = choose_victim(set_index)
                     else:
-                        victim = cache.get((set_index,ways-1))
+                        victim = cache.get((set_index,ways-1))  # Default to last way
+                    # Remove victim and use that way
                     for w in range(ways):
                         if cache.get((set_index, w)) == victim:
                             del cache[(set_index, w)]
                             target_way = w
                             break
-                cache[(set_index, target_way)] = block_number
-                record_use(set_index,block_number)
 
+                # Insert the new block into cache
+                cache[(set_index, target_way)] = block_number
+                record_use(set_index, block_number)  # Update LRU tracking
+
+            # Record access information
             access_info = {
                 "Word": word_address,
                 "Set/Index": set_index,
@@ -377,31 +394,36 @@ def simulate_mode(wordsPerBlock, blocks, sets, mappingPolicy, num_accesses, max_
                 "Hit": is_hit,
             }
 
+        # Save the access to the global table for later display
         access_table.append(access_info)
 
+        # Update hit/miss statistics
         if is_hit:
             hit_count += 1
         else:
             miss_count += 1
 
-        # Decide next address
+        # --- Simulate Locality of Reference ---
         if locality_enabled:
-            # 85% chance to stay local, 15% to jump
+            # 85% chance to access a nearby address
             if random.random() < 0.85:
-                # Bias toward next address being within +-4 of the current
                 delta = random.choice([-3, -2, -1, 0, 1, 2, 3])
                 current_address = max(0, min(max_word_address, current_address + delta))
             else:
+                # 15% chance to jump to a completely random address
                 current_address = random.randint(0, max_word_address)
         else:
             current_address = random.randint(0, max_word_address)
 
+    # --- Final Output Statistics ---
     total = hit_count + miss_count
     hit_rate = (hit_count / total) * 100
     miss_rate = (miss_count / total) * 100
 
+    # Show final cache state
     print_cache_table(mappingPolicy, blocks, sets, wordsPerBlock)
 
+    # Display hit/miss summary
     print("\n--- Simulation Results ---")
     print(f"Total Accesses: {total}")
     print(f"Hits: {hit_count}")
@@ -409,6 +431,7 @@ def simulate_mode(wordsPerBlock, blocks, sets, mappingPolicy, num_accesses, max_
     print(f"Hit Rate: {hit_rate:.2f}%")
     print(f"Miss Rate: {miss_rate:.2f}%")
 
+    # Optional: print the full list of access records
     show_accesses = input("Would you like to print the full access list? ").strip().lower()
     if show_accesses == "yes":
         print("\n--- Access List ---")
@@ -423,6 +446,7 @@ def simulate_mode(wordsPerBlock, blocks, sets, mappingPolicy, num_accesses, max_
             print(f"{i:<4} {entry['Word']:<8} {loc:<12} b{block:<7} w{w_start}-{w_end:<7} {result:<6}")
     else:
         print("Goodbye!")
+
 
 
 
