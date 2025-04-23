@@ -154,6 +154,7 @@ def realSize(nomSize, blocks, tag):
 # Cache simulation variables
 cache = {}              # Stores the cache blocks based on mapping policy
 access_table = []       # Keeps track of access history for reporting
+lru_order = {}          # {set_index: [block0, block1, …]}
 
 # Resets the cache and access history
 def clear_cache():
@@ -198,6 +199,17 @@ def print_cache_table(mappingPolicy, blocks, sets, wordsPerBlock):
                 row += f" {val:<18}|"
             print(row)
 
+# Keeps track of block use by adding MRU block to the use list
+def record_use(set_idx, block):
+    q = lru_order.setdefault(set_idx, [])
+    if block in q:
+        q.remove(block)
+    q.append(block)
+
+# Eliminates the LRU block
+def choose_victim(set_idx):
+    return lru_order[set_idx].pop(0)
+
 # Simulates user access to cache and performs hit/miss logic
 def manual_access(wordsPerBlock, blocks, sets, mappingPolicy):
     while True:
@@ -238,14 +250,22 @@ def manual_access(wordsPerBlock, blocks, sets, mappingPolicy):
                 key = (set_index, way)
                 if cache.get(key) == block_number:
                     is_hit = True
+                    record_use(set_index, block_number)
                     break
-                if cache.get(key) is None and empty_way is None:
+                if cache.get(key) is None:
                     empty_way = way
 
             # If miss, place in empty slot or replace way 0 (no LRU used)
             if not is_hit:
-                way_to_fill = empty_way if empty_way is not None else 0
-                cache[(set_index, way_to_fill)] = block_number
+                if empty_way is not None:
+                    target_way = empty_way
+                else:
+                    victim = choose_victim(set_index)
+                    target_way = next(w for w in range(ways)
+                                      if cache.get((set_index, w)) == victim)
+                cache[(set_index, target_way)] = block_number
+                record_use(set_index,block_number)
+
 
         # Record access
         access_table.append({
@@ -315,13 +335,20 @@ def simulate_mode(wordsPerBlock, blocks, sets, mappingPolicy, num_accesses, max_
                 key = (set_index, way)
                 if cache.get(key) == block_number:
                     is_hit = True
+                    record_use(set_index, block_number)
                     break
-                if cache.get(key) is None and empty_way is None:
+                if cache.get(key) is None:
                     empty_way = way
 
             if not is_hit:
-                way_to_fill = empty_way if empty_way is not None else 0
-                cache[(set_index, way_to_fill)] = block_number
+                if empty_way is not None:
+                    target_way = empty_way
+                else:
+                    victim = choose_victim(set_index)
+                    target_way = next(w for w in range(ways)
+                                      if cache.get((set_index, w)) == victim)
+                cache[(set_index, target_way)] = block_number
+                record_use(set_index, block_number)
 
             access_info = {
                 "Word": word_address,
